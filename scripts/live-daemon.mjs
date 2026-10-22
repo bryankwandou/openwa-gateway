@@ -336,7 +336,7 @@ function renderHtmlQrPage(res) {
           <canvas id="qrCanvas"></canvas>
         </div>
         <div class="instructions">
-          <strong>Langkah Menghubungkan:</strong>
+          <strong>Langkah Menghubungkan (Scan QR):</strong>
           <ol>
             <li>Buka aplikasi WhatsApp di ponsel Anda.</li>
             <li>Ketuk menu Titik Tiga (Android) atau Pengaturan (iOS).</li>
@@ -344,6 +344,23 @@ function renderHtmlQrPage(res) {
             <li>Ketuk <strong>Tautkan Perangkat (Link a Device)</strong>.</li>
             <li>Arahkan kamera ke QR Code di atas.</li>
           </ol>
+        </div>
+
+        <div style="margin: 1.5rem 0 1rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span style="height: 1px; background: var(--border); flex: 1;"></span>
+          <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Atau Tautkan Dengan Nomor Telepon</span>
+          <span style="height: 1px; background: var(--border); flex: 1;"></span>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; justify-content: center;">
+          <input type="text" id="phoneInput" placeholder="Nomor WA (contoh: 6281234567890)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; color: var(--text); font-size: 0.9rem; width: 62%;">
+          <button id="pairBtn" onclick="requestPairCode()" style="background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 0.6rem 1rem; font-weight: 600; cursor: pointer; font-size: 0.85rem;">Minta Kode</button>
+        </div>
+
+        <div id="pairResult" style="display: none; margin-top: 1rem; background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 6px; padding: 0.8rem;">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Masukkan kode 8-digit berikut di WhatsApp Anda:</div>
+          <div id="pairCodeDisplay" style="font-family: monospace; font-size: 1.7rem; font-weight: 700; letter-spacing: 0.25em; color: var(--accent); margin: 0.5rem 0;"></div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Buka WhatsApp -> Perangkat Tertaut -> Tautkan dengan nomor telepon</div>
         </div>
       `
       }
@@ -353,6 +370,42 @@ function renderHtmlQrPage(res) {
   <script>
     let currentQr = ${JSON.stringify(currentQrCode)};
     let isConnected = ${isConnected};
+
+    async function requestPairCode() {
+      const phoneInput = document.getElementById('phoneInput');
+      const btn = document.getElementById('pairBtn');
+      const resDiv = document.getElementById('pairResult');
+      const codeDisp = document.getElementById('pairCodeDisplay');
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+
+      if (!phone) {
+        alert('Silakan masukkan nomor WhatsApp Anda.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Meminta...';
+
+      try {
+        const res = await fetch('/api/v1/pairing-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phone })
+        });
+        const data = await res.json();
+        if (data.pairingCode) {
+          codeDisp.innerText = data.pairingCode;
+          resDiv.style.display = 'block';
+        } else {
+          alert(data.error || 'Gagal meminta pairing code.');
+        }
+      } catch (err) {
+        alert('Terjadi kesalahan: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Minta Kode';
+      }
+    }
 
     function renderQr(qrText) {
       if (!qrText || isConnected) return;
